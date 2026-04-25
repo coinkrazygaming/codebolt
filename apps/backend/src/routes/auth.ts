@@ -256,64 +256,68 @@ router.post("/init-admin", async (req: Request, res: Response): Promise<void> =>
       },
     });
 
-    // Create default site settings
-    const existingSettings = await prisma.siteSettings.findFirst();
-    if (!existingSettings) {
-      await prisma.siteSettings.create({
-        data: {
-          siteName: "Website Builder AI",
-          primaryDomain: "builder.local",
-          supportEmail: "support@example.com",
-        },
-      });
-    }
+    // Try to create default site settings and pricing plans
+    try {
+      const existingSettings = await prisma.siteSettings.findFirst();
+      if (!existingSettings) {
+        await prisma.siteSettings.create({
+          data: {
+            siteName: "Website Builder AI",
+            primaryDomain: "builder.local",
+            supportEmail: "support@example.com",
+          },
+        });
+      }
 
-    // Create default pricing plans
-    const existingPlans = await prisma.pricingPlan.count();
-    if (existingPlans === 0) {
-      await prisma.pricingPlan.createMany({
-        data: [
-          {
-            name: "Free",
-            price: 0,
-            currency: "USD",
-            projects: 1,
-            storage: 1,
-            features: ["1 Project", "1 GB Storage"],
-            isActive: true,
-          },
-          {
-            name: "Pro",
-            price: 29,
-            currency: "USD",
-            projects: 10,
-            storage: 100,
-            features: [
-              "10 Projects",
-              "100 GB Storage",
-              "Advanced Analytics",
-              "Priority Support",
-            ],
-            isActive: true,
-          },
-          {
-            name: "Enterprise",
-            price: 99,
-            currency: "USD",
-            projects: 100,
-            storage: 1000,
-            features: [
-              "100 Projects",
-              "1000 GB Storage",
-              "Advanced Analytics",
-              "24/7 Support",
-              "Custom Integrations",
-              "Dedicated Account Manager",
-            ],
-            isActive: true,
-          },
-        ],
-      });
+      const existingPlans = await prisma.pricingPlan.count();
+      if (existingPlans === 0) {
+        await prisma.pricingPlan.createMany({
+          data: [
+            {
+              name: "Free",
+              price: 0,
+              currency: "USD",
+              projects: 1,
+              storage: 1,
+              features: ["1 Project", "1 GB Storage"],
+              isActive: true,
+            },
+            {
+              name: "Pro",
+              price: 29,
+              currency: "USD",
+              projects: 10,
+              storage: 100,
+              features: [
+                "10 Projects",
+                "100 GB Storage",
+                "Advanced Analytics",
+                "Priority Support",
+              ],
+              isActive: true,
+            },
+            {
+              name: "Enterprise",
+              price: 99,
+              currency: "USD",
+              projects: 100,
+              storage: 1000,
+              features: [
+                "100 Projects",
+                "1000 GB Storage",
+                "Advanced Analytics",
+                "24/7 Support",
+                "Custom Integrations",
+                "Dedicated Account Manager",
+              ],
+              isActive: true,
+            },
+          ],
+        });
+      }
+    } catch (settingsError) {
+      console.warn("Warning: Could not create default settings/pricing:", settingsError);
+      // Continue anyway - settings can be created later
     }
 
     sendSuccess(
