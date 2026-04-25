@@ -2,16 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Github } from 'lucide-react';
 import { githubAuthService } from '../services/github-auth';
+import { useAuth } from '../contexts/AuthContext';
+import { GitHubTokenService } from '../services/github-token';
 
 export function GitHubAuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { token } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const state = searchParams.get('state');
+      const projectId = searchParams.get('projectId');
 
       if (!code || !state) {
         setError('Missing OAuth code or state');
@@ -19,24 +23,32 @@ export function GitHubAuthCallback() {
       }
 
       try {
-        const token = await githubAuthService.handleOAuthCallback(code, state);
+        const githubToken = await githubAuthService.handleOAuthCallback(code, state);
 
-        if (!token) {
+        if (!githubToken) {
           setError('Failed to authenticate with GitHub');
           return;
         }
 
-        // Redirect back to GitHub loader
-        setTimeout(() => {
-          navigate('/github', { replace: true });
-        }, 1500);
+        // If this is a project-specific authorization, save the token for that project
+        if (projectId && token) {
+          await GitHubTokenService.saveTokenForProject(projectId, githubToken, token);
+          setTimeout(() => {
+            navigate(`/project/${projectId}`, { replace: true });
+          }, 1500);
+        } else {
+          // Otherwise redirect back to GitHub loader
+          setTimeout(() => {
+            navigate('/github', { replace: true });
+          }, 1500);
+        }
       } catch (err) {
         setError(`Authentication error: ${String(err)}`);
       }
     };
 
     handleCallback();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, token]);
 
   if (error) {
     return (

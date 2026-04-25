@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  spaces   Space[]
+  sessions Session[]
+}
+
+model Session {
+  id    String @id @default(cuid())
+  userId String
+  token String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Space {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String   @default("My Workspace")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@unique([userId]) // One space per user
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  spaceId     String
+  name        String
+  description String?
+  subdomain   String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  space              Space               @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  settings           ProjectSettings?
+  gitConfig          GitConfig?
+  githubToken        GithubToken?
+}
+
+model ProjectSettings {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model GitConfig {
+  id                 String   @id @default(cuid())
+  projectId          String   @unique
+  prWorkflow         String?  // PR workflow configuration (JSON string)
+  pushRepoUrl        String?  // Repository push URL
+  pushBranch         String   @default("main")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model GithubToken {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  accessToken String
+  scope       String?
+  tokenType   String   @default("bearer")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
