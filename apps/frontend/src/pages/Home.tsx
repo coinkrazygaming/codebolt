@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Github } from 'lucide-react';
 import axios from "axios";
 import { BACKEND_URL } from '../config';
 
@@ -43,6 +43,14 @@ export function Home() {
               className="w-full mt-4 bg-blue-600 text-gray-100 py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               Generate Website Plan
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/github')}
+              className="w-full mt-3 bg-gray-700 text-gray-100 py-3 px-6 rounded-lg font-medium hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <Github className="w-5 h-5" />
+              Load & Code from GitHub
             </button>
           </div>
         </form>
