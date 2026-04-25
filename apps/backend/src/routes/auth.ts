@@ -169,7 +169,7 @@ router.get(
     try {
       const user = await prisma.user.findUnique({
         where: { id: req.userId },
-        select: { id: true, email: true, name: true, createdAt: true },
+        select: { id: true, email: true, name: true, isAdmin: true, createdAt: true },
       });
 
       if (!user) {
@@ -184,5 +184,150 @@ router.get(
     }
   }
 );
+
+// Initialize admin user (one-time setup)
+router.post("/init-admin", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if any admin exists
+    const adminExists = await prisma.user.findFirst({
+      where: { isAdmin: true },
+    });
+
+    if (adminExists) {
+      sendError(res, 400, "Admin user already exists");
+      return;
+    }
+
+    if (!email || !password) {
+      sendError(res, 400, "Email and password are required");
+      return;
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      // Just make them admin if they don't have a space
+      const space = await prisma.space.findUnique({
+        where: { userId: existingUser.id },
+      });
+
+      if (!space) {
+        await prisma.space.create({
+          data: {
+            userId: existingUser.id,
+            name: "Admin Space",
+          },
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { isAdmin: true },
+      });
+
+      sendSuccess(res, {
+        message: "Existing user promoted to admin",
+        user: { id: existingUser.id, email: existingUser.email },
+      });
+      return;
+    }
+
+    // Create new admin user
+    const hashedPassword = await hashPassword(password);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name: "Admin",
+        isAdmin: true,
+      },
+    });
+
+    // Create admin space
+    await prisma.space.create({
+      data: {
+        userId: user.id,
+        name: "Admin Space",
+      },
+    });
+
+    // Create default site settings
+    const existingSettings = await prisma.siteSettings.findFirst();
+    if (!existingSettings) {
+      await prisma.siteSettings.create({
+        data: {
+          siteName: "Website Builder AI",
+          primaryDomain: "builder.local",
+          supportEmail: "support@example.com",
+        },
+      });
+    }
+
+    // Create default pricing plans
+    const existingPlans = await prisma.pricingPlan.count();
+    if (existingPlans === 0) {
+      await prisma.pricingPlan.createMany({
+        data: [
+          {
+            name: "Free",
+            price: 0,
+            currency: "USD",
+            projects: 1,
+            storage: 1,
+            features: ["1 Project", "1 GB Storage"],
+            isActive: true,
+          },
+          {
+            name: "Pro",
+            price: 29,
+            currency: "USD",
+            projects: 10,
+            storage: 100,
+            features: [
+              "10 Projects",
+              "100 GB Storage",
+              "Advanced Analytics",
+              "Priority Support",
+            ],
+            isActive: true,
+          },
+          {
+            name: "Enterprise",
+            price: 99,
+            currency: "USD",
+            projects: 100,
+            storage: 1000,
+            features: [
+              "100 Projects",
+              "1000 GB Storage",
+              "Advanced Analytics",
+              "24/7 Support",
+              "Custom Integrations",
+              "Dedicated Account Manager",
+            ],
+            isActive: true,
+          },
+        ],
+      });
+    }
+
+    sendSuccess(
+      res,
+      {
+        message: "Admin user created successfully",
+        user: { id: user.id, email: user.email, name: user.name },
+      },
+      201
+    );
+  } catch (error) {
+    console.error("Init admin error:", error);
+    sendError(res, 500, "Failed to initialize admin");
+  }
+});
 
 export default router;

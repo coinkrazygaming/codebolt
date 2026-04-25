@@ -10,6 +10,8 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      userEmail?: string;
+      isAdmin?: boolean;
     }
   }
 }
@@ -43,10 +45,40 @@ export async function authenticateRequest(
       return;
     }
 
+    // Fetch user to get admin status
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, email: true, isAdmin: true },
+    });
+
+    if (!user) {
+      sendError(res, 401, "User not found");
+      return;
+    }
+
     req.userId = decoded.userId;
+    req.userEmail = user.email;
+    req.isAdmin = user.isAdmin;
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
+    sendError(res, 500, "Internal server error");
+  }
+}
+
+export async function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.isAdmin) {
+      sendError(res, 403, "Admin access required");
+      return;
+    }
+    next();
+  } catch (error) {
+    console.error("Admin check error:", error);
     sendError(res, 500, "Internal server error");
   }
 }

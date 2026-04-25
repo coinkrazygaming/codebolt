@@ -15,12 +15,24 @@ import { Signup } from './pages/Signup';
 import { Dashboard } from './pages/Dashboard';
 import { ProjectSettings } from './pages/ProjectSettings';
 import { ProjectGitHubSetup } from './pages/ProjectGitHubSetup';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminUsers } from './pages/AdminUsers';
+import { AdminWorkspaces } from './pages/AdminWorkspaces';
+import { AdminProjects } from './pages/AdminProjects';
+import { AdminSettings } from './pages/AdminSettings';
+import { AdminPricing } from './pages/AdminPricing';
+import { AdminAiKeys } from './pages/AdminAiKeys';
+import { AdminApiKeys } from './pages/AdminApiKeys';
+import { AdminSetup } from './pages/AdminSetup';
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Admin setup - public route for initial setup */}
+          <Route path="/admin-setup" element={<AdminSetup />} />
+
           {/* Public routes */}
           <Route
             path="/login"
@@ -64,6 +76,72 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProjectGitHubSetup />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute>
+                <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/workspaces"
+            element={
+              <ProtectedRoute>
+                <AdminWorkspaces />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/projects"
+            element={
+              <ProtectedRoute>
+                <AdminProjects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute>
+                <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/pricing"
+            element={
+              <ProtectedRoute>
+                <AdminPricing />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/ai-keys"
+            element={
+              <ProtectedRoute>
+                <AdminAiKeys />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/api-keys"
+            element={
+              <ProtectedRoute>
+                <AdminApiKeys />
               </ProtectedRoute>
             }
           />

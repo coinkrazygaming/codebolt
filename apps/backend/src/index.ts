@@ -11,6 +11,7 @@ import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/projects";
 import settingsRoutes from "./routes/settings";
 import gitConfigRoutes from "./routes/git-config";
+import adminRoutes from "./routes/admin";
 
 const app = express();
 app.use(cors());
@@ -37,6 +38,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/projects/settings", settingsRoutes);
 app.use("/api/projects/git-config", gitConfigRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Existing LLM routes (unprotected for backward compatibility)
 app.post("/template", async (req, res) => {
