@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
     "@types/cors": "^2.8.17",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "openai": "^4.52.0"
   }
 }

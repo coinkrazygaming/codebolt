@@ -13,6 +13,8 @@ import { useWebContainer } from '../hooks/useWebContainer';
 import { Loader } from '../components/Loader';
 
 
+export type LLMProvider = "anthropic" | "xai";
+
 export function Builder() {
   const location = useLocation();
   const { prompt } = location.state as { prompt: string };
@@ -20,12 +22,13 @@ export function Builder() {
   const [llmMessages, setLlmMessages] = useState<{role: "user" | "assistant", content: string;}[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
+  const [provider, setProvider] = useState<LLMProvider>("anthropic");
   const webcontainer = useWebContainer();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
-  
+
   const [steps, setSteps] = useState<Step[]>([]);
 
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -142,11 +145,11 @@ export function Builder() {
   }, [files, webcontainer]);
 
   async function init() {
-    const response = await axios.post(`${BACKEND_URL}/template`, {
+    const response = await axios.post(`${BACKEND_URL}/template?provider=${provider}`, {
       prompt: prompt.trim()
     });
     setTemplateSet(true);
-    
+
     const {prompts, uiPrompts} = response.data;
 
     setSteps(parseXml(uiPrompts[0]).map((x: Step) => ({
@@ -155,7 +158,7 @@ export function Builder() {
     })));
 
     setLoading(true);
-    const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+    const stepsResponse = await axios.post(`${BACKEND_URL}/chat?provider=${provider}`, {
       messages: [...prompts, prompt].map(content => ({
         role: "user",
         content
@@ -184,7 +187,20 @@ export function Builder() {
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
-        <h1 className="text-xl font-semibold text-gray-100">Website Builder</h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-xl font-semibold text-gray-100">Website Builder</h1>
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-400">AI Provider:</label>
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as LLMProvider)}
+              className="bg-gray-700 text-gray-100 px-3 py-1 rounded text-sm border border-gray-600 hover:border-gray-500 focus:outline-none focus:border-purple-500"
+            >
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="xai">xAI (Grok)</option>
+            </select>
+          </div>
+        </div>
         <p className="text-sm text-gray-400 mt-1">Prompt: {prompt}</p>
       </header>
       
@@ -214,7 +230,7 @@ export function Builder() {
                     };
 
                     setLoading(true);
-                    const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+                    const stepsResponse = await axios.post(`${BACKEND_URL}/chat?provider=${provider}`, {
                       messages: [...llmMessages, newMessage]
                     });
                     setLoading(false);
