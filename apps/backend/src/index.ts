@@ -107,62 +107,6 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-app.post("/api/auth/github", async (req, res) => {
-  try {
-    const { code } = req.body;
-
-    if (!code) {
-      return res.status(400).json({ message: "Missing OAuth code" });
-    }
-
-    const clientId = process.env.GITHUB_CLIENT_ID;
-    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret) {
-      console.error("GitHub OAuth credentials not configured");
-      return res.status(500).json({ message: "Server misconfiguration" });
-    }
-
-    // Exchange code for access token
-    const response = await fetch("https://github.com/login/oauth/access_token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub token exchange failed: ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as any;
-
-    if (data.error) {
-      return res
-        .status(400)
-        .json({ message: data.error_description || data.error });
-    }
-
-    res.json({
-      access_token: data.access_token,
-      token_type: data.token_type || "bearer",
-      scope: data.scope,
-    });
-  } catch (error) {
-    console.error("Error in GitHub auth:", error);
-    res.status(500).json({
-      message: "Failed to authenticate with GitHub",
-      error: String(error),
-    });
-  }
-});
-
 app.listen(3000, () => {
   console.log("Backend server running on port 3000");
 });

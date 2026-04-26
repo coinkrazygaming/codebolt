@@ -23,16 +23,21 @@ export function GitHubAuthCallback() {
       }
 
       try {
-        const githubToken = await githubAuthService.handleOAuthCallback(code, state);
+        const authResponse = await githubAuthService.handleOAuthCallback(code, state);
 
-        if (!githubToken) {
+        if (!authResponse) {
           setError('Failed to authenticate with GitHub');
           return;
         }
 
-        // If this is a project-specific authorization, save the token for that project
+        // If we got a JWT token from the backend, save it for app authentication
+        if (authResponse.authToken) {
+          localStorage.setItem('auth_token', authResponse.authToken);
+        }
+
+        // If this is a project-specific authorization, save the GitHub token for that project
         if (projectId && token) {
-          await GitHubTokenService.saveTokenForProject(projectId, githubToken, token);
+          await GitHubTokenService.saveTokenForProject(projectId, authResponse, token);
           setTimeout(() => {
             navigate(`/project/${projectId}`, { replace: true });
           }, 1500);

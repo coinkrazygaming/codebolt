@@ -185,6 +185,126 @@ router.get(
   }
 );
 
+// GitHub OAuth callback
+router.post("/github", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      sendError(res, 400, "Missing OAuth code");
+      return;
+    }
+
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      console.error("GitHub OAuth credentials not configured");
+      sendError(res, 500, "Server misconfiguration");
+      return;
+    }
+
+    // Exchange code for access token
+    const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error(`GitHub token exchange failed: ${tokenResponse.statusText}`);
+    }
+
+    const data = (await tokenResponse.json()) as any;
+
+    if (data.error) {
+      sendError(res, 400, data.error_description || data.error);
+      return;
+    }
+
+    if (!data.access_token) {
+      sendError(res, 400, "No access token received from GitHub");
+      return;
+    }
+
+    // Fetch GitHub user info
+    const userResponse = await fetch("https://api.github.com/user", {
+      headers: {
+        Authorization: `token ${data.access_token}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    });
+
+    if (!userResponse.ok) {
+      throw new Error(`Failed to fetch GitHub user: ${userResponse.statusText}`);
+    }
+
+    const gitHubUser = (await userResponse.json()) as any;
+
+    // Find or create user in database
+    let user = await prisma.user.findFirst({
+      where: {
+        email: gitHubUser.email || `${gitHubUser.login}@github.com`,
+      },
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: gitHubUser.email || `${gitHubUser.login}@github.com`,
+          name: gitHubUser.name || gitHubUser.login,
+          password: "", // GitHub users don't have password
+        },
+      });
+
+      // Create default workspace
+      await prisma.space.create({
+        data: {
+          userId: user.id,
+          name: "My Workspace",
+        },
+      });
+    }
+
+    // Generate JWT token
+    const token = generateToken(user.id);
+
+    // Create session
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt,
+      },
+    });
+
+    sendSuccess(
+      res,
+      {
+        access_token: data.access_token,
+        token_type: data.token_type || "bearer",
+        scope: data.scope,
+        user: { id: user.id, email: user.email, name: user.name },
+        authToken: token,
+      },
+      200
+    );
+  } catch (error) {
+    console.error("Error in GitHub auth:", error);
+    sendError(res, 500, "Failed to authenticate with GitHub");
+  }
+});
+
 // Initialize admin user (one-time setup)
 router.post("/init-admin", async (req: Request, res: Response): Promise<void> => {
   try {

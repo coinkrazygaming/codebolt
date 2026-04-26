@@ -27,6 +27,14 @@ export interface GitHubToken {
   expires_at?: number;
 }
 
+export interface GitHubAuthResponse {
+  access_token: string;
+  token_type: string;
+  scope: string;
+  user?: { id: string; email: string; name?: string };
+  authToken?: string;
+}
+
 class GitHubAuthService {
   private clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
   private redirectUri = `${window.location.origin}/auth/github/callback`;
@@ -52,7 +60,7 @@ class GitHubAuthService {
   /**
    * Handle OAuth callback
    */
-  async handleOAuthCallback(code: string, state: string): Promise<GitHubToken | null> {
+  async handleOAuthCallback(code: string, state: string): Promise<GitHubAuthResponse | null> {
     // Verify state for CSRF protection
     const savedState = localStorage.getItem(STATE_STORAGE_KEY);
     if (state !== savedState) {
@@ -64,7 +72,6 @@ class GitHubAuthService {
 
     try {
       // Exchange code for access token via backend
-      // Note: In production, this should be done server-side to keep the secret secure
       const response = await fetch('/api/auth/github', {
         method: 'POST',
         headers: {
@@ -74,12 +81,14 @@ class GitHubAuthService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to exchange OAuth code');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to exchange OAuth code');
       }
 
-      const token: GitHubToken = await response.json();
-      this.saveToken(token);
-      return token;
+      const authResponse: GitHubAuthResponse = await response.json();
+      // Save GitHub token for API access
+      this.saveToken(authResponse);
+      return authResponse;
     } catch (error) {
       console.error('OAuth callback error:', error);
       return null;
